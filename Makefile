@@ -143,13 +143,13 @@ build-all:
 	@echo "$(CYAN)Building for multiple platforms...$(NC)"
 	@mkdir -p $(BIN_DIR)
 	@echo "$(CYAN)Building for Linux (amd64)...$(NC)"
-	@GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-linux-amd64 $(CMD_PATH)
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-linux-amd64 $(CMD_PATH)
 	@echo "$(CYAN)Building for macOS (amd64)...$(NC)"
-	@GOOS=darwin GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-darwin-amd64 $(CMD_PATH)
+	@CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-darwin-amd64 $(CMD_PATH)
 	@echo "$(CYAN)Building for macOS (arm64)...$(NC)"
-	@GOOS=darwin GOARCH=arm64 go build -o $(BIN_DIR)/$(BINARY_NAME)-darwin-arm64 $(CMD_PATH)
+	@CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o $(BIN_DIR)/$(BINARY_NAME)-darwin-arm64 $(CMD_PATH)
 	@echo "$(CYAN)Building for Windows (amd64)...$(NC)"
-	@GOOS=windows GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-windows-amd64.exe $(CMD_PATH)
+	@CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o $(BIN_DIR)/$(BINARY_NAME)-windows-amd64.exe $(CMD_PATH)
 	@echo "$(GREEN)✓ Multi-platform build complete$(NC)"
 	@ls -lh $(BIN_DIR)/
 

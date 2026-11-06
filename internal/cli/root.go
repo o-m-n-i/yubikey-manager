@@ -42,7 +42,8 @@ It provides commands for:
   - Revoking compromised subkeys
   - Extending key expiration dates
   - Managing key backups
-  - Verifying setup`,
+  - Verifying setup
+  - Preparing YubiKeys for Vault break-glass login (piv, vault)`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Check for no-color flag first (before loading config)
 			noColor, _ := cmd.Flags().GetBool("no-color")
@@ -103,6 +104,8 @@ It provides commands for:
 	rootCmd.AddCommand(newExportCmd())
 	rootCmd.AddCommand(newVerifyCmd())
 	rootCmd.AddCommand(newConfigCmd())
+	rootCmd.AddCommand(newPivCmd())
+	rootCmd.AddCommand(newVaultCmd())
 
 	// Set version after command is created
 	rootCmd.Version = version

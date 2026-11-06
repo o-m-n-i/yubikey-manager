@@ -23,12 +23,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Key Management**: Clean up old/expired keys from your keyring
 - **Backup Management**: Automatic backups before making changes
 - **Status & Verification**: Check key and YubiKey status, verify setup
+- **Vault break-glass login**: Prepare the PIV app of every YubiKey and log in to Vault with it (see [Vault break-glass login](#vault-break-glass-login))
 
 ## Installation
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.26 or later (see `go.mod`)
 - GPG 2.2+ installed and configured
 - YubiKey with OpenPGP support
 
@@ -225,6 +226,89 @@ Checks that your GPG and YubiKey setup is correct, including:
 | `verify`       | Verify GPG and YubiKey setup                           |
 | `config init`  | Interactively generate configuration file              |
 | `config show`  | Show current configuration values                      |
+| `piv status`   | PIV state of each YubiKey and its Vault registration   |
+| `piv setup`    | Prepare slot 9a, PIN, PUK and management key           |
+| `piv register` | Register the slot 9a certificate as a Vault cert role  |
+| `vault login`  | Log in to Vault with the YubiKey (saves `~/.vault-token`) |
+
+## Vault break-glass login
+
+On recent Vault versions the recovery keys alone no longer yield a root token:
+`generate-root` needs a valid Vault token as well. When your usual login (SSO, OIDC) is down, the
+only admin login left is the **YubiKey certificate login**, so every YubiKey
+should be prepared for it. The `piv` and `vault` commands do that in one sitting.
+They need no GPG configuration.
+
+### What it is for
+
+Slot 9a of the YubiKey's PIV application holds an ECCP256 key and a self-signed
+certificate. The certificate is registered in Vault's cert auth method
+(`auth/cert/certs/yubikey-<name>`, policy `yubikey-admin`, token TTL 8h, max 24h).
+`ykgpg vault login` signs the TLS client handshake **on the YubiKey** (via
+[piv-go](https://github.com/go-piv/piv-go)), so the private key never leaves the
+device. The `vault` CLI and `curl` cannot do this login.
+
+### From a blank key to a working login
+
+```bash
+ykgpg piv status                              # what state is each key in?
+ykgpg piv setup    --name laptop-a --device 22222222
+ykgpg piv register --name laptop-a --device 22222222   # needs an admin Vault token
+ykgpg vault login  --device 22222222
+```
+
+1. `piv setup` generates the slot 9a key (`--pin-policy ONCE --touch-policy ALWAYS`)
+   and the certificate `CN=yubikey-<name>` (10 years), replaces the factory PIN
+   and PUK, and sets a random AES192 management key that is stored on the key and
+   protected by the PIN. ykman asks for the PINs on the terminal; ykgpg never takes
+   a PIN, PUK or management key as a flag and never logs one. Re-running it for the
+   same `--name` skips the steps already done.
+2. `piv register` writes the Vault role from the slot 9a certificate. It needs an
+   admin token (`VAULT_TOKEN` or `~/.vault-token`) and network access to Vault, and refuses when a
+   role already trusts that certificate or the role name is taken.
+3. `vault login` saves the token to `~/.vault-token` (0600) and prints only the role,
+   policies and TTL. The token is printed only with `--print-token`.
+
+Role names are lower case: Vault 2.x matches ACL role names in lower case.
+
+With several YubiKeys connected, every command refuses to act until you give
+`--device <serial>` (`piv status` is the exception: it only reads, and lists them all).
+
+### PIV PIN vs GPG PIN
+
+The **PIV** and **OpenPGP** applications on a YubiKey are separate and have
+separate PINs. The PIV PIN (6-8 characters) and PUK are not the GPG PIN or the
+Admin PIN, and typing the wrong one still costs a PIV attempt. Every prompt says
+"PIV PIN". `vault login` checks the length before anything reaches the key and
+**refuses to try a PIN when only one attempt is left**, so it cannot lock the PIV
+app. If it does get locked, unblock it with the PUK: `ykman piv access unblock-pin`.
+
+### Slot 9a may be shared
+
+On a key that already uses slot 9a (for example macOS smart-card pairing, or SSH
+through yubikey-agent), regenerating the slot breaks all of that and the Vault
+login at once. `piv setup` therefore refuses a slot 9a that holds a key unless you
+pass `--force`, explains what would be lost, and then makes you type the serial
+number. Run `ykgpg piv status` first.
+
+### The scdaemon note
+
+piv-go opens the smart card in exclusive mode. gpg's `scdaemon` keeps a connection
+open, which shows up as *"the smart card cannot be accessed because of other
+connections outstanding"*. `vault login` runs `gpgconf --kill scdaemon` first;
+gpg-agent restarts it on demand, so signing commits straight afterwards still works.
+`yubikey-agent` can hold the card the same way: ykgpg detects it and tells you, but
+does not kill it. Stop it yourself and retry.
+
+### Building
+
+`vault login` needs cgo and the PC/SC framework (built into macOS; `libpcsclite-dev`
+on Linux). Build it where the YubiKey is: `go install ./cmd/ykgpg` on the Mac.
+The prebuilt release binaries are cross-compiled without cgo; `piv status`,
+`piv setup` and `piv register` (which use ykman) work in them, `vault login` says it
+needs a build from source.
+
+Requirements: `ykman` for `piv *`; `pinentry-mac` for PIN entry when there is no terminal.
 
 ## Troubleshooting
 
