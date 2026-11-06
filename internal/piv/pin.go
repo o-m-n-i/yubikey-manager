@@ -21,7 +21,7 @@ func PromptPIN(purpose string, retries int) (string, error) {
 	prompt := fmt.Sprintf("YubiKey PIV PIN for %s (%d attempts left; not your GPG PIN): ", purpose, retries)
 	if tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err == nil {
 		defer func() { _ = tty.Close() }()
-		fmt.Fprint(tty, prompt)
+		_, _ = fmt.Fprint(tty, prompt)
 		pin, err := term.ReadPassword(int(tty.Fd()))
 		_, _ = fmt.Fprintln(tty)
 		if err == nil {

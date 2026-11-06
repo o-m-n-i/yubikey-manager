@@ -89,7 +89,7 @@ func (e *pivEnv) printKeyStatus(ctx context.Context, serial string, roles []vaul
 		return err
 	}
 
-	ui.HeaderColor.Fprintf(e.out, "YUBIKEY %s\n", serial)
+	_, _ = ui.HeaderColor.Fprintf(e.out, "YUBIKEY %s\n", serial)
 	e.kv("PIV version", info.Version)
 	e.kv("PIN", credentialState(info.DefaultPIN, info.PINRetries))
 	e.kv("PUK", credentialState(info.DefaultPUK, info.PUKRetries))
@@ -106,7 +106,7 @@ func (e *pivEnv) printKeyStatus(ctx context.Context, serial string, roles []vaul
 	if slot == nil {
 		e.kv("Slot 9a", "empty")
 		e.kv("Vault", "not registered (no certificate)")
-		fmt.Fprintln(e.out)
+		_, _ = fmt.Fprintln(e.out)
 		return nil
 	}
 
@@ -121,7 +121,7 @@ func (e *pivEnv) printKeyStatus(ctx context.Context, serial string, roles []vaul
 	if !slot.HasCert {
 		e.kv("Certificate", "none")
 		e.kv("Vault", "not registered (no certificate)")
-		fmt.Fprintln(e.out)
+		_, _ = fmt.Fprintln(e.out)
 		return nil
 	}
 	e.kv("Certificate", slot.Subject)
@@ -130,7 +130,7 @@ func (e *pivEnv) printKeyStatus(ctx context.Context, serial string, roles []vaul
 	cert, err := e.ykman.Certificate(ctx, serial, piv.SlotAuth)
 	if err != nil {
 		e.kv("Vault", "unknown ("+err.Error()+")")
-		fmt.Fprintln(e.out)
+		_, _ = fmt.Fprintln(e.out)
 		return nil
 	}
 	fp := piv.Fingerprint(cert)
@@ -146,7 +146,7 @@ func (e *pivEnv) printKeyStatus(ctx context.Context, serial string, roles []vaul
 			e.kv("Vault", "NOT registered (run: ykgpg piv register --name <name>)")
 		}
 	}
-	fmt.Fprintln(e.out)
+	_, _ = fmt.Fprintln(e.out)
 	return nil
 }
 

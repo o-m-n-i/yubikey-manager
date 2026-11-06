@@ -101,6 +101,6 @@ func describeTouch(p *piv.KeyPolicy) string {
 
 // kv prints one "label: value" line of a status table.
 func (e *pivEnv) kv(key, value string) {
-	ui.LabelColor.Fprintf(e.out, "%-16s ", key+":")
-	ui.ValueColor.Fprintln(e.out, value)
+	_, _ = ui.LabelColor.Fprintf(e.out, "%-16s ", key+":")
+	_, _ = ui.ValueColor.Fprintln(e.out, value)
 }

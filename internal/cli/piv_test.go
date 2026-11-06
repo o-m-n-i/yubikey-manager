@@ -112,7 +112,7 @@ func capture(t *testing.T, fn func()) (stdout, stderr string) {
 		done <- [2]string{string(a), string(b)}
 	}()
 	func() {
-		defer func() { os.Stdout, os.Stderr = oldOut, oldErr; wo.Close(); we.Close() }()
+		defer func() { os.Stdout, os.Stderr = oldOut, oldErr; _ = wo.Close(); _ = we.Close() }()
 		fn()
 	}()
 	out := <-done
