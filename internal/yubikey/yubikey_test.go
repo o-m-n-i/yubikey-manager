@@ -144,13 +144,13 @@ func TestService_GetCardInfo(t *testing.T) {
 
 func TestService_SupportsOpenPGP(t *testing.T) {
 	tests := []struct {
-		name           string
-		ykmanOutput    string
-		ykmanError     error
-		cardStatusErr  error
-		expected       bool
-		expectError    bool
-		errorContains  string
+		name          string
+		ykmanOutput   string
+		ykmanError    error
+		cardStatusErr error
+		expected      bool
+		expectError   bool
+		errorContains string
 	}{
 		{
 			name:        "ykman shows OpenPGP support",
@@ -167,18 +167,18 @@ func TestService_SupportsOpenPGP(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "ykman not available, GPG card status works",
-			ykmanError:  fmt.Errorf("ykman not found"),
+			name:          "ykman not available, GPG card status works",
+			ykmanError:    fmt.Errorf("ykman not found"),
 			cardStatusErr: nil,
-			expected:    true,
-			expectError: false,
+			expected:      true,
+			expectError:   false,
 		},
 		{
-			name:        "ykman not available, GPG fails with operation not supported",
-			ykmanError:  fmt.Errorf("ykman not found"),
+			name:          "ykman not available, GPG fails with operation not supported",
+			ykmanError:    fmt.Errorf("ykman not found"),
 			cardStatusErr: fmt.Errorf("gpg: selecting card failed: Operation not supported by device"),
-			expected:    false,
-			expectError: true,
+			expected:      false,
+			expectError:   true,
 			errorContains: "unable to determine",
 		},
 	}
@@ -194,14 +194,14 @@ func TestService_SupportsOpenPGP(t *testing.T) {
 				},
 			}
 			mockExec := executor.NewMockExecutor()
-			
+
 			// Set up ykman mock
 			if tt.ykmanError != nil {
 				mockExec.SetError("ykman info", tt.ykmanError)
 			} else {
 				mockExec.SetOutput("ykman info", []byte(tt.ykmanOutput))
 			}
-			
+
 			svc := NewService(mockGPG, mockExec)
 
 			supports, err := svc.SupportsOpenPGP(context.Background())

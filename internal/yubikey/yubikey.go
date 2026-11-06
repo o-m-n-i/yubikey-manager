@@ -123,7 +123,7 @@ func (s *Service) SupportsOpenPGP(ctx context.Context) (bool, error) {
 
 	// Check the error to see if it's a "not supported" vs "not initialized" case
 	errStr := err.Error()
-	
+
 	// If the error specifically mentions the device doesn't support the operation,
 	// and we can't detect it via ykman either, it likely doesn't support OpenPGP
 	if strings.Contains(errStr, "Operation not supported by device") {

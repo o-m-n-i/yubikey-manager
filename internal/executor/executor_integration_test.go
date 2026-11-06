@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package executor
@@ -39,9 +40,8 @@ func TestRealExecutor_RunInteractive_GPGExitCode2(t *testing.T) {
 
 	// For now, we'll just verify the executor exists and can be created
 	assert.NotNil(t, executor)
-	
+
 	// We can't easily test the exit code 2 handling without mocking,
 	// but the logic is straightforward: if name == "gpg" && exitCode == 2, return nil
 	// This is tested implicitly through actual usage in move-subkey command.
 }
-

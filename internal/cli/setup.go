@@ -32,7 +32,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		// Error indicates YubiKey is present but has an issue
 		ui.LogError("%v", err)
 		fmt.Println()
-		
+
 		// Check if it's a "not supported" vs "not initialized" issue
 		errStr := err.Error()
 		if strings.Contains(errStr, "does not support OpenPGP") {
@@ -49,7 +49,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 			fmt.Println()
 			return err
 		}
-		
+
 		// Otherwise, assume it needs initialization
 		ui.LogInfo("To initialize a blank YubiKey for OpenPGP:")
 		fmt.Println("  1. Run: gpg --card-edit")

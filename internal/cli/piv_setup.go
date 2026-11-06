@@ -102,7 +102,7 @@ func runPivSetup(cmd *cobra.Command, env *pivEnv, name string, force bool) error
 		if err != nil {
 			return err
 		}
-		defer os.RemoveAll(dir) // holds only the public key
+		defer func() { _ = os.RemoveAll(dir) }() // holds only the public key
 		pub := filepath.Join(dir, "slot9a-public.pem")
 
 		ui.LogInfo("Step 1/4: generating the key in slot 9a. ykman asks for the management key; on a factory key press Enter (blank = default).")

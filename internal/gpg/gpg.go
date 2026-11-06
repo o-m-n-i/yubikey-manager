@@ -52,8 +52,8 @@ type Key struct {
 type CardInfo struct {
 	Serial        string
 	Cardholder    string
-	Keys          map[string]string   // "Signature", "Encryption", "Authentication" -> key ID
-	KeyAttributes []string            // Key types for each slot, e.g., ["rsa2048", "rsa2048", "rsa2048"]
+	Keys          map[string]string // "Signature", "Encryption", "Authentication" -> key ID
+	KeyAttributes []string          // Key types for each slot, e.g., ["rsa2048", "rsa2048", "rsa2048"]
 }
 
 // Service implements GPGService using an executor.

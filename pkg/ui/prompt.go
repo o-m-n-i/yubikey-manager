@@ -15,9 +15,9 @@ import (
 func Confirm(prompt string) bool {
 	fmt.Printf("%s [y/N] ", prompt)
 	os.Stdout.Sync()
-	
+
 	fd := int(os.Stdin.Fd())
-	
+
 	// If not a terminal, use simple bufio reading
 	if !term.IsTerminal(fd) {
 		reader := bufio.NewReader(os.Stdin)
@@ -29,7 +29,7 @@ func Confirm(prompt string) bool {
 		response = strings.TrimRight(response, "\r")
 		return response == "y" || response == "yes"
 	}
-	
+
 	// For terminals, use raw mode to have full control over input
 	// This prevents issues like ^M (carriage return) being displayed
 	oldState, err := term.MakeRaw(fd)
@@ -45,7 +45,7 @@ func Confirm(prompt string) bool {
 		return response == "y" || response == "yes"
 	}
 	defer term.Restore(fd, oldState)
-	
+
 	// Read characters one by one until newline
 	var response strings.Builder
 	for {
@@ -54,19 +54,19 @@ func Confirm(prompt string) bool {
 		if err != nil || n == 0 {
 			break
 		}
-		
+
 		// Handle Enter key - break on \n or \r
 		if b[0] == '\n' || b[0] == '\r' {
 			break
 		}
-		
+
 		// Handle Ctrl+C
 		if b[0] == 3 {
 			term.Restore(fd, oldState)
 			fmt.Println()
 			os.Exit(130)
 		}
-		
+
 		// Handle backspace/delete
 		if b[0] == 127 || b[0] == 8 {
 			if response.Len() > 0 {
@@ -77,16 +77,16 @@ func Confirm(prompt string) bool {
 			}
 			continue
 		}
-		
+
 		// Handle printable characters
 		if b[0] >= 32 {
 			response.WriteByte(b[0])
 			fmt.Print(string(b[0]))
 		}
 	}
-	
+
 	fmt.Println() // Move to next line after input
-	
+
 	responseStr := strings.TrimSpace(strings.ToLower(response.String()))
 	return responseStr == "y" || responseStr == "yes"
 }
@@ -96,9 +96,9 @@ func Confirm(prompt string) bool {
 func Prompt(prompt string) (string, error) {
 	fmt.Print(prompt)
 	os.Stdout.Sync()
-	
+
 	fd := int(os.Stdin.Fd())
-	
+
 	// If not a terminal, use simple bufio reading
 	if !term.IsTerminal(fd) {
 		reader := bufio.NewReader(os.Stdin)
@@ -108,7 +108,7 @@ func Prompt(prompt string) (string, error) {
 		}
 		return strings.TrimSpace(strings.TrimRight(response, "\r")), nil
 	}
-	
+
 	// For terminals, use raw mode to have full control over input
 	// This prevents issues like ^M (carriage return) being displayed
 	oldState, err := term.MakeRaw(fd)
@@ -122,7 +122,7 @@ func Prompt(prompt string) (string, error) {
 		return strings.TrimSpace(strings.TrimRight(response, "\r")), nil
 	}
 	defer term.Restore(fd, oldState)
-	
+
 	// Read characters one by one until newline
 	var response strings.Builder
 	for {
@@ -131,7 +131,7 @@ func Prompt(prompt string) (string, error) {
 		if err != nil || n == 0 {
 			break
 		}
-		
+
 		// Handle Enter key - on macOS/Unix, Enter sends \r; on Windows it's \r\n
 		// Break on either \r or \n to handle both cases
 		if b[0] == '\n' {
@@ -143,14 +143,14 @@ func Prompt(prompt string) (string, error) {
 			// For now, just break on \r to handle macOS/Unix case
 			break
 		}
-		
+
 		// Handle Ctrl+C
 		if b[0] == 3 {
 			term.Restore(fd, oldState)
 			fmt.Println()
 			os.Exit(130)
 		}
-		
+
 		// Handle backspace/delete
 		if b[0] == 127 || b[0] == 8 {
 			if response.Len() > 0 {
@@ -163,16 +163,16 @@ func Prompt(prompt string) (string, error) {
 			}
 			continue
 		}
-		
+
 		// Handle printable characters
 		if b[0] >= 32 {
 			response.WriteByte(b[0])
 			fmt.Print(string(b[0]))
 		}
 	}
-	
+
 	fmt.Println() // Move to next line after input
-	
+
 	return strings.TrimSpace(response.String()), nil
 }
 
