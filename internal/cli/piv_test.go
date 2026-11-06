@@ -457,7 +457,7 @@ const secretToken = "s.TOP-SECRET-TOKEN"
 func loginTestEnv(t *testing.T, card *fakeCard, serials []string) (*loginEnv, *executor.MockExecutor, *string) {
 	t.Helper()
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"auth":{"client_token":%q,"policies":["default","yubikey-admin"],"lease_duration":28800,"metadata":{"cert_name":"yubikey-laptop-a"}}}`, secretToken)
+		_, _ = fmt.Fprintf(w, `{"auth":{"client_token":%q,"policies":["default","yubikey-admin"],"lease_duration":28800,"metadata":{"cert_name":"yubikey-laptop-a"}}}`, secretToken)
 	}))
 	t.Cleanup(srv.Close)
 	m := executor.NewMockExecutor()

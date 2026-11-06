@@ -107,7 +107,7 @@ func runVaultLogin(cmd *cobra.Command, env *loginEnv, o loginOpts) error {
 	if err != nil {
 		return piv.ExclusiveAccessHint(fmt.Errorf("opening YubiKey %s: %w", serial, err), agentRunning)
 	}
-	defer card.Close()
+	defer func() { _ = card.Close() }()
 
 	client, err := env.newVault(o.addr)
 	if err != nil {
