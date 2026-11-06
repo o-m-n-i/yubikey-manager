@@ -71,7 +71,12 @@ func runPivSetup(cmd *cobra.Command, env *pivEnv, name string, force bool) error
 	ours := occupied && slot.Subject == subject && slot.KeyType != ""
 
 	generate := !occupied
+	certOnly := false // an interrupted run left a key with no certificate
+	keyNoCert := occupied && slot.KeyType != "" && !slot.HasCert
 	switch {
+	case keyNoCert && !force && env.confirm(fmt.Sprintf(
+		"Slot 9a on %s holds a key but no certificate, which is what an interrupted setup leaves behind.\nCreate the certificate %s for that key (nothing is destroyed)?", serial, subject)):
+		certOnly = true
 	case occupied && ours:
 		ui.LogInfo("Slot 9a already holds the key and certificate %s; skipping key generation.", subject)
 	case occupied && !force:
@@ -86,18 +91,22 @@ func runPivSetup(cmd *cobra.Command, env *pivEnv, name string, force bool) error
 	}
 
 	needPIN, needPUK := info.DefaultPIN, info.DefaultPUK
+	if (generate || certOnly) && info.PINRetries >= 0 && info.PINRetries < 2 {
+		return fmt.Errorf("only %d %s attempt(s) left; not continuing, a wrong entry would block it. Unblock it first with the %s: ykman piv access unblock-pin", info.PINRetries, namePIVPIN, namePIVPUK)
+	}
 	needMgmt := info.DefaultManagementKey || !info.ManagementKeyStored
-	if !generate && !needPIN && !needPUK && !needMgmt {
+	if !generate && !certOnly && !needPIN && !needPUK && !needMgmt {
 		ui.LogSuccess("YubiKey %s is already set up. Next: ykgpg piv register --name %s --device %s", serial, name, serial)
 		return nil
 	}
 
-	printSetupPlan(serial, subject, generate, needPIN, needPUK, needMgmt)
+	printSecretsOverview()
+	printSetupPlan(serial, subject, generate, certOnly, needPIN, needPUK, needMgmt)
 	if !env.confirm("Continue?") {
 		return fmt.Errorf("aborted")
 	}
 
-	if generate {
+	if generate || certOnly {
 		dir, err := env.mkTempDir()
 		if err != nil {
 			return err
@@ -105,54 +114,68 @@ func runPivSetup(cmd *cobra.Command, env *pivEnv, name string, force bool) error
 		defer func() { _ = os.RemoveAll(dir) }() // holds only the public key
 		pub := filepath.Join(dir, "slot9a-public.pem")
 
-		ui.LogInfo("Step 1/4: generating the key in slot 9a. ykman asks for the management key; on a factory key press Enter (blank = default).")
-		if err := env.ykman.GenerateKey(ctx, serial, pub); err != nil {
-			return fmt.Errorf("generating the slot 9a key: %w\n(nothing else was changed; once the key exists, re-run with --name %s to carry on)", err, name)
+		if generate {
+			printPromptGuide("Step 1: generate the key in slot 9a", mgmtAnswer)
+			if err := env.ykman.GenerateKey(ctx, serial, pub); err != nil {
+				return fmt.Errorf("generating the slot 9a key: %w\n(nothing else was changed; once the key exists, re-run with --name %s to carry on)", err, name)
+			}
+		} else if err := env.ykman.ExportPublicKey(ctx, serial, pub); err != nil {
+			return err
 		}
-		ui.LogInfo("Step 2/4: creating the certificate %s. Enter the PIV PIN (factory default 123456) and touch the key when it blinks.", subject)
+		printPromptGuide("Step 2: create the certificate "+subject, mgmtAnswer, pivPINAnswer(info.DefaultPIN), "touch the YubiKey when it blinks")
 		if err := env.ykman.GenerateCertificate(ctx, serial, subject, certValidDays, pub); err != nil {
-			return fmt.Errorf("creating the certificate: %w\n(the key exists in slot 9a; re-run with --name %s to carry on)", err, name)
+			return fmt.Errorf("creating the certificate: %w\n(re-run with --name %s to carry on)", err, name)
 		}
 	}
 
 	if needPIN {
-		ui.LogInfo("Step 3/4: replace the PIV PIN (6-8 characters; NOT the GPG PIN) and the PUK.")
+		printPromptGuide("Step 3: choose a new "+namePIVPIN,
+			`"Enter the current PIN" -> the current `+namePIVPIN+` (factory default: 123456)`,
+			`"Enter the new PIN" and "Repeat for confirmation" -> your new `+namePIVPIN+`, 6-8 characters`)
 		if err := env.ykman.ChangePIN(ctx, serial); err != nil {
-			return fmt.Errorf("changing the PIV PIN: %w\n(re-run with --name %s to carry on)", err, name)
+			return fmt.Errorf("changing the %s: %w\n(re-run with --name %s to carry on)", namePIVPIN, err, name)
 		}
 	}
 	if needPUK {
+		printPromptGuide("Step 3b: choose a new "+namePIVPUK+" (it unblocks the "+namePIVPIN+"; it is not the PIN)",
+			`"Enter the current PUK" -> the current `+namePIVPUK+` (factory default: 12345678)`,
+			`"Enter the new PUK" and "Repeat for confirmation" -> your new `+namePIVPUK+`, 6-8 characters`)
 		if err := env.ykman.ChangePUK(ctx, serial); err != nil {
-			return fmt.Errorf("changing the PIV PUK: %w\n(re-run with --name %s to carry on)", err, name)
+			return fmt.Errorf("changing the %s: %w\n(re-run with --name %s to carry on)", namePIVPUK, err, name)
 		}
 	}
 	if needMgmt {
-		ui.LogInfo("Step 4/4: random management key, stored on the key, protected by the PIV PIN. Press Enter at the current-key prompt on a factory key.")
+		printPromptGuide("Step 4: random "+namePIVMgmt+", stored on the key and unlocked by the "+namePIVPIN,
+			`"Enter the current management key [blank to use default key]" -> just press Enter (leave it empty)`,
+			`"Enter PIN" -> your `+namePIVPIN+` (the new one if you just changed it)`)
 		if err := env.ykman.ProtectManagementKey(ctx, serial); err != nil {
-			return fmt.Errorf("setting the management key: %w\n(re-run with --name %s to carry on)", err, name)
+			return fmt.Errorf("setting the %s: %w\n(re-run with --name %s to carry on)", namePIVMgmt, err, name)
 		}
 	}
 
-	ui.LogSuccess("YubiKey %s is set up. Store the new PIV PIN and PUK in your password manager.", serial)
+	ui.LogSuccess("YubiKey %s is set up. Store the new %s and %s in your password manager, labelled as PIV (not GPG).", serial, namePIVPIN, namePIVPUK)
 	ui.LogInfo("Next: ykgpg piv register --name %s --device %s", name, serial)
 	return nil
 }
 
-func printSetupPlan(serial, subject string, generate, pin, puk, mgmt bool) {
+func printSetupPlan(serial, subject string, generate, certOnly, pin, puk, mgmt bool) {
 	ui.PrintSection("SETUP PLAN FOR YUBIKEY " + serial)
 	if generate {
-		fmt.Printf("  - generate ECCP256 key in slot 9a (PIN once, touch always)\n  - self-signed certificate %s, %d days\n", subject, certValidDays)
+		fmt.Printf("  - generate ECCP256 key in slot 9a (PIN once, touch always)\n")
+	}
+	if generate || certOnly {
+		fmt.Printf("  - self-signed certificate %s, %d days\n", subject, certValidDays)
 	}
 	if pin {
-		fmt.Println("  - replace the factory PIV PIN")
+		fmt.Println("  - replace the factory " + namePIVPIN)
 	}
 	if puk {
-		fmt.Println("  - replace the factory PIV PUK")
+		fmt.Println("  - replace the factory " + namePIVPUK)
 	}
 	if mgmt {
-		fmt.Println("  - random AES192 management key, protected by the PIN")
+		fmt.Println("  - random " + namePIVMgmt + ", stored on the key and unlocked by the " + namePIVPIN)
 	}
-	fmt.Println("The PIV PIN and PUK are separate from the GPG PIN and Admin PIN. ykman will prompt for them; ykgpg never sees them.")
+	fmt.Println("ykman asks for these itself; ykgpg never sees them. Before each step ykgpg tells you which prompt wants which secret.")
 }
 
 func refuseOccupiedMessage(serial string, s *piv.SlotInfo) string {

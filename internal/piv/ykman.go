@@ -78,6 +78,15 @@ func (y *Ykman) GenerateKey(ctx context.Context, serial, pubPath string) error {
 		"-a", "ECCP256", "--pin-policy", "ONCE", "--touch-policy", "ALWAYS", SlotAuth, pubPath)
 }
 
+// ExportPublicKey writes the public half of the slot 9a key to path (public
+// data only; `ykman piv keys export` never exports the private key).
+func (y *Ykman) ExportPublicKey(ctx context.Context, serial, path string) error {
+	if _, err := y.exec.Run(ctx, "ykman", "--device", serial, "piv", "keys", "export", SlotAuth, path); err != nil {
+		return fmt.Errorf("exporting the slot 9a public key: %w", err)
+	}
+	return nil
+}
+
 // GenerateCertificate writes a self-signed certificate for the key in slot 9a.
 // ykman asks for the PIV PIN and the management key, and the key wants a touch.
 func (y *Ykman) GenerateCertificate(ctx context.Context, serial, subject string, days int, pubPath string) error {

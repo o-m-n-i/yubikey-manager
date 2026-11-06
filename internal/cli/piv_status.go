@@ -91,15 +91,15 @@ func (e *pivEnv) printKeyStatus(ctx context.Context, serial string, roles []vaul
 
 	_, _ = ui.HeaderColor.Fprintf(e.out, "YUBIKEY %s\n", serial)
 	e.kv("PIV version", info.Version)
-	e.kv("PIN", credentialState(info.DefaultPIN, info.PINRetries))
-	e.kv("PUK", credentialState(info.DefaultPUK, info.PUKRetries))
+	e.kv("PIV PIN", credentialState(info.DefaultPIN, info.PINRetries))
+	e.kv("PIV PUK", credentialState(info.DefaultPUK, info.PUKRetries))
 	switch {
 	case info.DefaultManagementKey:
-		e.kv("Management key", "factory default (run: ykgpg piv setup)")
+		e.kv("PIV mgmt key", "factory default (run: ykgpg piv setup)")
 	case info.ManagementKeyStored:
-		e.kv("Management key", "random, stored on the key, protected by the PIN ("+info.ManagementKeyAlgo+")")
+		e.kv("PIV mgmt key", "random, stored on the key, protected by the PIN ("+info.ManagementKeyAlgo+")")
 	default:
-		e.kv("Management key", "custom, not stored on the key ("+info.ManagementKeyAlgo+")")
+		e.kv("PIV mgmt key", "custom, not stored on the key ("+info.ManagementKeyAlgo+")")
 	}
 
 	slot := info.Slot(piv.SlotAuth)

@@ -274,14 +274,29 @@ Role names are lower case: Vault 2.x matches ACL role names in lower case.
 With several YubiKeys connected, every command refuses to act until you give
 `--device <serial>` (`piv status` is the exception: it only reads, and lists them all).
 
-### PIV PIN vs GPG PIN
+### Which PIN is which
 
-The **PIV** and **OpenPGP** applications on a YubiKey are separate and have
-separate PINs. The PIV PIN (6-8 characters) and PUK are not the GPG PIN or the
-Admin PIN, and typing the wrong one still costs a PIV attempt. Every prompt says
-"PIV PIN". `vault login` checks the length before anything reaches the key and
-**refuses to try a PIN when only one attempt is left**, so it cannot lock the PIV
-app. If it does get locked, unblock it with the PUK: `ykman piv access unblock-pin`.
+A YubiKey holds several separate secrets for separate applications. They do not
+unlock each other, and ykman's prompts only say "PIN" or "PUK", so `ykgpg piv setup`
+tells you before each step what every prompt wants.
+
+| Secret | Application | Used for | Factory default | Touched by `ykgpg piv` |
+| --- | --- | --- | --- | --- |
+| **PIV PIN** (6-8 chars) | PIV | unlocking the certificate key: Vault login, smart-card login | `123456` | yes |
+| **PIV PUK** (6-8 chars) | PIV | unblocking a blocked PIV PIN | `12345678` | yes |
+| **PIV management key** | PIV | letting ykman change PIV settings; random, stored on the key, unlocked by the PIV PIN | `010203...` (public default) | yes |
+| OpenPGP PIN | OpenPGP | GPG signing and decryption | `123456` | no |
+| OpenPGP Admin PIN | OpenPGP | changing OpenPGP settings | `12345678` | no |
+| FIDO2 PIN | FIDO2 | passkeys, security-key login | none | no |
+
+The defaults of the PIV and OpenPGP PINs look identical, which is the usual source of
+confusion. Typing the wrong one still costs a PIV attempt. `vault login` checks the
+length before anything reaches the key and **refuses to try a PIN when only one attempt
+is left**, so it cannot lock the PIV app. If the PIV PIN does get blocked, unblock it
+with the PIV PUK: `ykman piv access unblock-pin`.
+
+Using the same value for several of these is possible but weakens them: for example, if
+the PIV PUK equals the PIV PIN, anyone who learns the PIN can also reset it.
 
 ### Slot 9a may be shared
 
