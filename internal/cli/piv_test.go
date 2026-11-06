@@ -571,3 +571,70 @@ func TestRegisteredOnRoot(t *testing.T) {
 	assert.Contains(t, names, "piv")
 	assert.Contains(t, names, "vault")
 }
+
+const infoKeyNoCert = `PIV version:              5.7.4
+PIN tries remaining:      3/3
+PUK tries remaining:      3/3
+Management key algorithm: TDES
+WARNING: Using default PIN!
+WARNING: Using default PUK!
+WARNING: Using default Management key!
+Slot 9A (AUTHENTICATION):
+  Private key type: ECCP256
+`
+
+func TestSetup_ResumesKeyWithoutCertificate(t *testing.T) {
+	m := executor.NewMockExecutor()
+	m.SetOutput("ykman list --serials", []byte("22222222\n"))
+	m.SetOutput("ykman --device 22222222 piv info", []byte(infoKeyNoCert))
+
+	var err error
+	capture(t, func() { err = runPivSetup(devCmd(""), newTestPivEnv(m), "laptop-a", false) })
+	require.NoError(t, err)
+
+	steps := interactiveSteps(m)
+	assert.NotContains(t, strings.Join(steps, "|"), "keys generate", "the existing key must be kept")
+	assert.Contains(t, steps[0], "piv certificates generate -s CN=yubikey-laptop-a")
+	require.Len(t, m.Calls, 3) // list, info, public key export
+	assert.Equal(t, "export", m.Calls[2].Args[len(m.Calls[2].Args)-3])
+}
+
+func TestSetup_KeyWithoutCertificateDeclined(t *testing.T) {
+	m := executor.NewMockExecutor()
+	m.SetOutput("ykman list --serials", []byte("22222222\n"))
+	m.SetOutput("ykman --device 22222222 piv info", []byte(infoKeyNoCert))
+	env := newTestPivEnv(m)
+	env.confirm = func(string) bool { return false }
+
+	var err error
+	capture(t, func() { err = runPivSetup(devCmd(""), env, "laptop-a", false) })
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--force")
+	assert.Empty(t, m.InteractiveCalls)
+}
+
+func TestSetup_RefusesWhenPINAttemptsAreLow(t *testing.T) {
+	m := executor.NewMockExecutor()
+	m.SetOutput("ykman list --serials", []byte("22222222\n"))
+	m.SetOutput("ykman --device 22222222 piv info",
+		[]byte(strings.Replace(infoBlank, "PIN tries remaining:      3/3", "PIN tries remaining:      1/3", 1)))
+
+	var err error
+	capture(t, func() { err = runPivSetup(devCmd(""), newTestPivEnv(m), "laptop-a", false) })
+	require.ErrorContains(t, err, "PIV PIN attempt")
+	assert.Empty(t, m.InteractiveCalls)
+}
+
+func TestSetup_NamesEverySecretAndNeverMixesThemUp(t *testing.T) {
+	m := executor.NewMockExecutor()
+	m.SetOutput("ykman list --serials", []byte("22222222\n"))
+	m.SetOutput("ykman --device 22222222 piv info", []byte(infoBlank))
+
+	var err error
+	out, _ := capture(t, func() { err = runPivSetup(devCmd(""), newTestPivEnv(m), "laptop-a", false) })
+	require.NoError(t, err)
+	for _, want := range []string{"PIV PIN", "PIV PUK", "PIV management key", "OpenPGP PIN", "OpenPGP Admin PIN",
+		"123456", "12345678", "just press Enter"} {
+		assert.Contains(t, out, want)
+	}
+}
