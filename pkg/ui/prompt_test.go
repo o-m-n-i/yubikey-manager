@@ -201,9 +201,8 @@ func TestPromptRequired_RetriesOnEmpty(t *testing.T) {
 	result, err := PromptRequired("Enter required: ")
 	assert.NoError(t, err)
 	assert.Equal(t, "value", result)
-	
+
 	// Note: Testing the retry loop with multiple empty inputs followed by valid input
 	// is complex with pipes. The retry logic is straightforward (calls Prompt in a loop
 	// until non-empty) and is verified by the function structure.
 }
-

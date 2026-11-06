@@ -26,7 +26,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version-file: go.mod
+
+      - name: Install PC/SC headers (smart card support needs cgo)
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -46,6 +49,9 @@ jobs:
 
       - name: Run go vet
         run: go vet ./...
+
+      - name: Scan for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
       - name: Run go mod tidy check
         run: |
@@ -75,10 +81,10 @@ jobs:
 
       - name: Build for multiple platforms
         run: |
-          GOOS=linux GOARCH=amd64 go build -trimpath -o bin/ykgpg-linux-amd64 ./cmd/ykgpg
-          GOOS=darwin GOARCH=amd64 go build -trimpath -o bin/ykgpg-darwin-amd64 ./cmd/ykgpg
-          GOOS=darwin GOARCH=arm64 go build -trimpath -o bin/ykgpg-darwin-arm64 ./cmd/ykgpg
-          GOOS=windows GOARCH=amd64 go build -trimpath -o bin/ykgpg-windows-amd64.exe ./cmd/ykgpg
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o bin/ykgpg-linux-amd64 ./cmd/ykgpg
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -o bin/ykgpg-darwin-amd64 ./cmd/ykgpg
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -o bin/ykgpg-darwin-arm64 ./cmd/ykgpg
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -o bin/ykgpg-windows-amd64.exe ./cmd/ykgpg
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -98,13 +104,17 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version-file: go.mod
+
+      - name: Install PC/SC headers (smart card support needs cgo)
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v8
         with:
           version: latest
-          args: --timeout=5m --out-format=colored-line-number
+          args: --timeout=5m
+          only-new-issues: true
 
   pre-commit:
     name: Pre-commit checks
@@ -112,6 +122,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install PC/SC headers (smart card support needs cgo)
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
 
       - name: Set up Python
         uses: actions/setup-python@v5

@@ -38,7 +38,7 @@ func runMoveSubkey(cmd *cobra.Command, args []string) error {
 		// Error indicates YubiKey is present but has an issue
 		ui.LogError("%v", err)
 		fmt.Println()
-		
+
 		// Check if it's a "not supported" vs "not initialized" issue
 		errStr := err.Error()
 		if strings.Contains(errStr, "does not support OpenPGP") {
@@ -50,7 +50,7 @@ func runMoveSubkey(cmd *cobra.Command, args []string) error {
 			fmt.Println()
 			return err
 		}
-		
+
 		// Otherwise, assume it needs initialization
 		ui.LogInfo("To initialize a blank YubiKey for OpenPGP:")
 		fmt.Println("  1. Run: gpg --card-edit")
@@ -92,7 +92,7 @@ func runMoveSubkey(cmd *cobra.Command, args []string) error {
 	if len(cardInfo.KeyAttributes) > 0 {
 		sigAttr := cardInfo.KeyAttributes[0] // First attribute is for signature key
 		fmt.Printf("  └─ Signature slot configured for: %s\n", sigAttr)
-		
+
 		// Check if the card is configured for RSA but we're trying to use ECC
 		isRSA := strings.HasPrefix(strings.ToLower(sigAttr), "rsa")
 		if isRSA {
@@ -253,4 +253,3 @@ func runMoveSubkey(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-

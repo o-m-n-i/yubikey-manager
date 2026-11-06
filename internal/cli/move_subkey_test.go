@@ -14,4 +14,3 @@ func TestNewMoveSubkeyCmd(t *testing.T) {
 	assert.Contains(t, cmd.Short, "subkey")
 	assert.Contains(t, cmd.Short, "YubiKey")
 }
-
