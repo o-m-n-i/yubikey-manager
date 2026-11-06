@@ -110,10 +110,11 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v8
         with:
           version: latest
-          args: --timeout=5m --out-format=colored-line-number
+          args: --timeout=5m
+          only-new-issues: true
 
   pre-commit:
     name: Pre-commit checks
@@ -121,6 +122,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install PC/SC headers (smart card support needs cgo)
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
 
       - name: Set up Python
         uses: actions/setup-python@v5

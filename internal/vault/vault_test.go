@@ -89,7 +89,7 @@ func TestLoginWithCard_SignsHandshakeAndOmitsRoleName(t *testing.T) {
 		}
 		gotPath = r.URL.Path
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
-		fmt.Fprint(w, loginReply)
+		_, _ = fmt.Fprint(w, loginReply)
 	})
 
 	card := &fakeCard{cert: cert, key: key, retries: 3}
@@ -111,7 +111,7 @@ func TestLoginWithCard_SendsRoleWhenGiven(t *testing.T) {
 	var gotBody map[string]string
 	_, c := vaultServer(t, func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
-		fmt.Fprint(w, loginReply)
+		_, _ = fmt.Fprint(w, loginReply)
 	})
 	_, err := c.LoginWithCard(context.Background(), &fakeCard{cert: cert, key: key, retries: 3}, "cert", "yubikey-test", nil)
 	require.NoError(t, err)
@@ -140,7 +140,7 @@ func TestLoginWithCard_VaultRejects(t *testing.T) {
 	cert, key := newCert(t, "x")
 	_, c := vaultServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{"errors":["invalid certificate or no client certificate supplied"]}`)
+		_, _ = fmt.Fprint(w, `{"errors":["invalid certificate or no client certificate supplied"]}`)
 	})
 	_, err := c.LoginWithCard(context.Background(), &fakeCard{cert: cert, key: key, retries: 3}, "cert", "", nil)
 	require.Error(t, err)
@@ -161,7 +161,7 @@ func rolesServer(t *testing.T, roles map[string]*x509.Certificate) (*Client, *[]
 	_, c := vaultServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Vault-Token") != "admin-token" {
 			w.WriteHeader(http.StatusForbidden)
-			fmt.Fprint(w, `{"errors":["permission denied"]}`)
+			_, _ = fmt.Fprint(w, `{"errors":["permission denied"]}`)
 			return
 		}
 		const base = "/v1/auth/cert/certs"
